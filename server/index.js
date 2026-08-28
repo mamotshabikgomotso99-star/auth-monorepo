@@ -7,29 +7,38 @@ const requireAuth = require('./middleware/auth');
 require('dotenv').config();
 
 const app = express();
+
+// Whitelist configuration
 const allowedOrigins = [
-  ...(process.env.CLIENT_URL || 'https://auth-monorepo-4z2n.vercel.app').split(','),
+  ...(process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : []),
+  'https://auth-monorepo-varr.vercel.app', // Your current active Vercel frontend domain
   'https://auth-monorepo-4z2n.vercel.app',
   'http://localhost:3000',
-
+  'http://localhost:5173',
 ]
   .map((o) => o.trim().replace(/\/+$/, ''))
   .filter(Boolean);
 
-app.use(
-  cors({
-    origin(origin, callback) {
-      // Allow same-origin / curl / server-to-server requests (no Origin header).
-      if (!origin) return callback(null, true);
-      const cleanOrigin = origin.replace(/\/+$/, '');
-      if (allowedOrigins.includes(cleanOrigin)) {
-        return callback(null, true);
-      }
-      return callback(new Error(`CORS: origin ${origin} not allowed`));
-    },
-    credentials: true,
-  })
-);
+const corsOptions = {
+  origin(origin, callback) {
+    // Allow same-origin / curl / server-to-server requests (no Origin header)
+    if (!origin) return callback(null, true);
+    
+    const cleanOrigin = origin.replace(/\/+$/, '');
+    if (allowedOrigins.includes(cleanOrigin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS: origin ${origin} not allowed`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+// Enable CORS pre-flight across all routes
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
 app.use(express.json());
 
 // Health check — useful for confirming Render deploy is alive
